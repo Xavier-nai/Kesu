@@ -9,15 +9,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.DocumentsContract;
-import android.util.Xml;
-
-import org.xmlpull.v1.XmlPullParser;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -111,10 +107,10 @@ final class ThemeStore {
             Entry meta = metadata.get(stem(entry.name));
             if (meta != null) {
                 try {
-                    String xml = new String(read(meta.id, 256 * 1024), StandardCharsets.UTF_8);
-                    String title = metadataValue(xml, "titles");
-                    if (!title.isEmpty()) entry.title = title;
-                    entry.designer = metadataValue(xml, "designers");
+                    String text = new String(read(meta.id, 256 * 1024), StandardCharsets.UTF_8);
+                    ThemeMetadata info = ThemeMetadata.parse(text);
+                    if (!info.title.isEmpty()) entry.title = info.title;
+                    entry.designer = info.designer;
                 } catch (Exception ignored) {
                     // Unreadable optional names must not prevent wallpaper management.
                 }
@@ -275,21 +271,4 @@ final class ThemeStore {
         return dot > 0 ? name.substring(0, dot) : name;
     }
 
-    private static String metadataValue(String text, String group) throws Exception {
-        XmlPullParser parser = Xml.newPullParser();
-        parser.setInput(new StringReader(text));
-        int groupDepth = -1;
-        String first = "";
-        for (int event = parser.next(); event != XmlPullParser.END_DOCUMENT; event = parser.next()) {
-            if (event == XmlPullParser.START_TAG && parser.getName().equals(group)) groupDepth = parser.getDepth();
-            else if (groupDepth > 0 && event == XmlPullParser.START_TAG && parser.getDepth() == groupDepth + 1) {
-                String language = parser.getAttributeValue(null, "locale");
-                if (language == null) language = parser.getAttributeValue(null, "language");
-                String value = parser.nextText().trim();
-                if (first.isEmpty()) first = value;
-                if (language != null && language.startsWith("zh")) return value;
-            } else if (groupDepth > 0 && event == XmlPullParser.END_TAG && parser.getDepth() == groupDepth) break;
-        }
-        return first;
-    }
 }

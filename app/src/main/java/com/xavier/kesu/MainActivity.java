@@ -164,6 +164,7 @@ public final class MainActivity extends Activity {
         if (selected != null) {
             LinearLayout actions = card();
             actions.addView(text(selected.title, 18, INK, true));
+            if (!selected.designer.isEmpty()) actions.addView(text("作者：" + selected.designer, 13, MUTED, false));
             actions.addView(text("首次替换前备份原图，每次写入后校验。", 13, MUTED, false));
             addButton(actions, "选择图片并替换", () -> choosePhoto(selected), true);
             addButton(actions, "恢复原图", () -> new AlertDialog.Builder(this)
@@ -196,11 +197,12 @@ public final class MainActivity extends Activity {
             LinearLayout label = column();
             label.setPadding(dp(16), 0, 0, 0);
             label.addView(text(entry.title, 16, INK, true));
-            if (!entry.designer.isEmpty()) label.addView(text(entry.designer, 12, MUTED, false));
+            if (!entry.designer.isEmpty()) label.addView(text("作者：" + entry.designer, 12, MUTED, false));
             label.addView(text(entry.thumbnail == null ? "图片无法预览，可尝试恢复原图"
                     : entry.id.equals(selectedId) ? "已选择" : "点击选择此主题", 12, MUTED, false));
             row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
-            row.setContentDescription(entry.title + (entry.id.equals(selectedId) ? "，已选择" : "，点击选择"));
+            row.setContentDescription(entry.title + (entry.designer.isEmpty() ? "" : "，作者：" + entry.designer)
+                    + (entry.id.equals(selectedId) ? "，已选择" : "，点击选择"));
             row.setOnClickListener(v -> { if (!busy) { selectedId = entry.id; render(); } });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
             lp.setMargins(0, 0, 0, dp(10));
