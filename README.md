@@ -6,9 +6,14 @@
 
 ## 安装测试版
 
-[下载 Kesu 0.1.4 测试 APK](downloads/Kesu-0.1.4-debug.apk?raw=true)
+[下载 Kesu 0.1.5 测试 APK](downloads/Kesu-0.1.5-debug.apk?raw=true)
 
 此安装包在本地通过编译、26 项单元测试、Android Lint 和 APK 签名验证。具体界面交互仍需手机复测。
+
+### 0.1.5 应用启动调整
+
+- 独立按钮通过 Android 的应用启动接口打开小米主题应用，由系统确定应用启动入口。
+- 移除参考 APK 的固定主题页面跳转。
 
 ### 0.1.4 跳转修复
 

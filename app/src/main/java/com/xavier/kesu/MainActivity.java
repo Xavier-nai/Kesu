@@ -357,18 +357,9 @@ public final class MainActivity extends Activity {
 
     private void openThemeManager() {
         try {
-            try {
-                Intent themePage = new Intent().setClassName("com.android.thememanager",
-                        "com.android.thememanager.activity.ThemeTabActivity");
-                startActivity(themePage);
-                return;
-            } catch (ActivityNotFoundException | SecurityException unavailable) {
-                // Some theme app versions may expose only their normal launch activity.
-            }
-            Intent launch = getPackageManager().getLaunchIntentForPackage("com.android.thememanager");
-            if (launch == null) throw new IOException("没有找到小米主题商店，请手动打开主题应用");
-            startActivity(launch);
-        } catch (Exception e) { error("无法打开主题商店：" + e.getMessage()); }
+            getPackageManager().getLaunchIntentSenderForPackage("com.android.thememanager")
+                    .sendIntent(this, 0, null, null, null);
+        } catch (Exception e) { error("无法打开主题应用：" + e.getMessage()); }
     }
 
     private void export(byte[] bytes) throws IOException {
