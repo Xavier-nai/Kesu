@@ -6,6 +6,7 @@ import android.app.WallpaperManager;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.ActivityNotFoundException;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -155,8 +156,7 @@ public final class MainActivity extends Activity {
         LinearLayout explanation = card();
         explanation.addView(text("主题锁屏壁纸", 21, INK, true));
         explanation.addView(text("只替换主题背景图片。更换或恢复后，请到主题商店重新应用对应主题。", 14, MUTED, false));
-        addButton(explanation, treeValue().isEmpty() ? "授权主题目录" : "重新授权目录", () -> authorize(false), false);
-        addButton(explanation, "光锥兼容授权", () -> authorize(true), false);
+        addButton(explanation, treeValue().isEmpty() ? "授权主题目录" : "重新授权目录", this::authorize, false);
         if (!treeValue().isEmpty()) addButton(explanation, "刷新壁纸列表", this::refresh, false);
         body.addView(explanation);
 
@@ -208,8 +208,8 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void authorize(boolean compatibility) {
-        try { startActivityForResult(ThemeStore.authorizationIntent(compatibility), AUTHORIZE); }
+    private void authorize() {
+        try { startActivityForResult(ThemeStore.authorizationIntent(), AUTHORIZE); }
         catch (Exception e) { error("无法打开系统目录选择器：" + e.getMessage()); }
     }
 
@@ -230,10 +230,18 @@ public final class MainActivity extends Activity {
         pickerActive = true;
         pendingPage = target == null ? 0 : 1;
         pendingEntry = target;
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*")
-                .addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try { startActivityForResult(intent, PHOTO); }
-        catch (Exception e) { pickerActive = false; error("无法打开图片选择器：" + e.getMessage()); }
+        catch (ActivityNotFoundException unavailable) {
+            try {
+                Intent gallery = new Intent(Intent.ACTION_PICK)
+                        .setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivityForResult(gallery, PHOTO);
+            } catch (Exception e) { pickerActive = false; error("无法打开相册：" + e.getMessage()); }
+        }
+        catch (Exception e) { pickerActive = false; error("无法打开相册：" + e.getMessage()); }
     }
 
     @Override protected void onActivityResult(int request, int result, Intent data) {

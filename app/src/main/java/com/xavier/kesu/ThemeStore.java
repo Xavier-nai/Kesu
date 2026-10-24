@@ -27,15 +27,13 @@ import java.util.Map;
 
 final class ThemeStore {
     static final String AUTHORITY = "com.android.externalstorage.documents";
-    static final String PATH = "Android/data/com.android.thememanager/files/MIUI/theme/.data/content/lockscreen";
-    private static final String META_PATH = "Android/data/com.android.thememanager/files/MIUI/theme/.data/meta/lockscreen";
     private static final String BACKUP_PREFIX = "原壁纸";
     private static final int MAX_BYTES = 32 * 1024 * 1024;
     private final Context context;
     private final ContentResolver resolver;
     private final Uri tree;
     private final String directoryId;
-    private final String volume;
+    private final String metadataId;
 
     static final class Entry {
         final String id;
@@ -62,15 +60,9 @@ final class ThemeStore {
         if (!AUTHORITY.equals(tree.getAuthority()) || !DocumentsContract.isTreeUri(tree)) {
             throw new IOException("请选择系统文件选择器中的 Android 或主题 lockscreen 目录");
         }
-        String granted = DocumentsContract.getTreeDocumentId(tree);
-        int colon = granted.indexOf(':');
-        if (colon < 0) throw new IOException("无法识别此目录");
-        volume = granted.substring(0, colon + 1);
-        String relative = granted.substring(colon + 1);
-        if (!relative.isEmpty() && !relative.equals(PATH) && !PATH.startsWith(relative + "/")) {
-            throw new IOException("目录不正确，请选择 Android 或小米主题 content/lockscreen 目录");
-        }
-        directoryId = volume + PATH;
+        ThemePaths paths = new ThemePaths(DocumentsContract.getTreeDocumentId(tree));
+        directoryId = paths.directoryId;
+        metadataId = paths.metadataId;
         boolean allowed = false;
         for (UriPermission permission : resolver.getPersistedUriPermissions()) {
             if (permission.getUri().equals(tree) && permission.isReadPermission() && permission.isWritePermission()) {
@@ -81,14 +73,13 @@ final class ThemeStore {
         if (!allowed) throw new IOException("没有持久的读写权限，请重新授权并允许写入");
     }
 
-    static Intent authorizationIntent(boolean compatibility) {
+    static Intent authorizationIntent() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-        // This is only the picker starting location used by the reference APK. It grants no access.
-        String hint = compatibility ? "primary:\u200bAndroid" : "primary:Android";
-        intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, DocumentsContract.buildDocumentUri(AUTHORITY, hint));
-        intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        // Match the reference APK's single picker entry point. Still requires a real persisted grant.
+        intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI,
+                DocumentsContract.buildDocumentUri(AUTHORITY, ThemePaths.INITIAL_ID));
         return intent;
     }
 
@@ -112,7 +103,7 @@ final class ThemeStore {
         }
         Map<String, Entry> metadata = new HashMap<>();
         try {
-            for (Entry item : children(volume + META_PATH)) metadata.put(stem(item.name), item);
+            for (Entry item : children(metadataId)) metadata.put(stem(item.name), item);
         } catch (IOException | SecurityException ignored) {
             // A directly granted content/lockscreen folder does not grant its sibling metadata.
         }
@@ -165,8 +156,7 @@ final class ThemeStore {
     }
 
     private void validateEntry(Entry entry) throws IOException {
-        String parent = entry.id.substring(0, Math.max(0, entry.id.lastIndexOf('/')));
-        if (!parent.equals(directoryId) || entry.name.startsWith(BACKUP_PREFIX)) {
+        if (!ThemePaths.isDirectChild(entry.id, directoryId) || entry.name.startsWith(BACKUP_PREFIX)) {
             throw new IOException("目标不在授权的主题壁纸目录内");
         }
         Entry actual = null;
