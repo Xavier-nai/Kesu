@@ -6,9 +6,14 @@
 
 ## 安装测试版
 
-[下载 Kesu 0.1.5 测试 APK](downloads/Kesu-0.1.5-debug.apk?raw=true)
+[下载 Kesu 0.1.6 测试 APK](downloads/Kesu-0.1.6-debug.apk?raw=true)
 
-此安装包在本地通过编译、26 项单元测试、Android Lint 和 APK 签名验证。具体界面交互仍需手机复测。
+此安装包在本地通过编译、26 项单元测试、Android Lint 和 APK 签名验证。0.1.6 已覆盖安装到用户的澎湃 OS 4 / Android 17 手机，用户点击独立按钮确认能够打开主题商店；其他系统版本仍需复测。
+
+### 0.1.6 真机启动入口修复
+
+- 根据连接手机的实际启动入口，优先打开 `com.miui.themestore` 主题商店应用，兼容旧版 `com.android.thememanager` 应用入口。
+- 启动失败时保留异常类型，避免错误提示仅显示 `null`。
 
 ### 0.1.5 应用启动调整
 

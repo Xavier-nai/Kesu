@@ -357,9 +357,11 @@ public final class MainActivity extends Activity {
 
     private void openThemeManager() {
         try {
-            getPackageManager().getLaunchIntentSenderForPackage("com.android.thememanager")
-                    .sendIntent(this, 0, null, null, null);
-        } catch (Exception e) { error("无法打开主题应用：" + e.getMessage()); }
+            Intent launch = getPackageManager().getLaunchIntentForPackage("com.miui.themestore");
+            if (launch == null) launch = getPackageManager().getLaunchIntentForPackage("com.android.thememanager");
+            if (launch == null) throw new ActivityNotFoundException("未找到主题应用的启动入口");
+            startActivity(launch);
+        } catch (Exception e) { error("无法打开主题应用：" + e); }
     }
 
     private void export(byte[] bytes) throws IOException {

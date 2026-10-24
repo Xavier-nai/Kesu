@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <queries>
+        <package android:name="com.miui.themestore" />
         <package android:name="com.android.thememanager" />
     </queries>
     <application
