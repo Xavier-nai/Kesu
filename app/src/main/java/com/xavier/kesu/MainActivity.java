@@ -151,14 +151,9 @@ public final class MainActivity extends Activity {
     }
 
     private void lockPage() {
-        LinearLayout live = card();
-        live.addView(text("实时锁屏壁纸", 21, INK, true));
-        live.addView(text("主题接入 Kesu 外部数据接口后，选图并确认裁剪，下次进入锁屏即可读取新图，无需重新应用主题。", 14, MUTED, false));
-        addButton(live, "选择实时锁屏壁纸", () -> choosePhoto(null), true);
-        body.addView(live);
         LinearLayout explanation = card();
         explanation.addView(text("主题锁屏壁纸", 21, INK, true));
-        explanation.addView(text("只替换主题背景图片。更换或恢复后，请到主题商店重新应用对应主题。", 14, MUTED, false));
+        explanation.addView(text("选择主题管理壁纸。替换或恢复后同步外部数据接口，已接入 Kesu 的主题进入锁屏时读取新图；未接入的主题仍需重新应用。", 14, MUTED, false));
         addButton(explanation, treeValue().isEmpty() ? "授权主题目录" : "重新授权目录", this::authorize, false);
         if (!treeValue().isEmpty()) addButton(explanation, "刷新壁纸列表", this::refresh, false);
         addButton(explanation, "前往主题商店", this::openThemeManager, false);
@@ -242,7 +237,7 @@ public final class MainActivity extends Activity {
 
     private void choosePhoto(ThemeStore.Entry target) {
         pickerActive = true;
-        pendingPage = target == null ? page : 1;
+        pendingPage = target == null ? 0 : 1;
         pendingEntry = target;
         Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -296,13 +291,6 @@ public final class MainActivity extends Activity {
                     return Images.decode(getApplicationContext(), Uri.fromFile(desktopFile()), 800);
                 }, preview -> { desktopPreview = preview; page = 0; render(); });
             } else if (pendingEntry != null) mutate(pendingEntry, cropped);
-            else {
-                runTask("更新实时锁屏壁纸", () -> {
-                    WallpaperProvider.publish(getApplicationContext(), cropped);
-                    cropped.delete();
-                    return true;
-                }, ignored -> message("壁纸已更新，接入 Kesu 的主题在进入锁屏时读取新图"));
-            }
         }
     }
 
@@ -314,16 +302,27 @@ public final class MainActivity extends Activity {
         String tree = treeValue();
         runTask(replacement == null ? "恢复原图" : "备份并替换壁纸", () -> {
             ThemeStore store = new ThemeStore(getApplicationContext(), Uri.parse(tree));
+            byte[] selected = null;
             if (replacement == null) store.restore(entry);
             else {
-                try { store.replace(entry, Files.readAllBytes(replacement.toPath())); }
+                try {
+                    selected = Files.readAllBytes(replacement.toPath());
+                    store.replace(entry, selected);
+                }
                 finally { replacement.delete(); }
             }
-            return true;
-        }, ignored -> {
+            try {
+                WallpaperProvider.publish(getApplicationContext(), selected == null ? store.extract(entry) : selected);
+                return "已同步外部壁纸接口。已接入 Kesu 的主题进入锁屏时读取新图；未接入的主题请重新应用「" + entry.title + "」。";
+            } catch (Exception e) {
+                return "主题文件已" + (replacement == null ? "恢复" : "替换") + "，但外部壁纸接口更新失败："
+                        + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())
+                        + "。可以重试本次操作；未接入接口的主题请重新应用。";
+            }
+        }, result -> {
             refresh();
             new AlertDialog.Builder(this).setTitle(replacement == null ? "原图已恢复" : "壁纸已替换")
-                    .setMessage("请在主题商店中重新应用「" + entry.title + "」，然后锁屏检查效果。")
+                    .setMessage(result)
                     .setPositiveButton("知道了", null).show();
         });
     }

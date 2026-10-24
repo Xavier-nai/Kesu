@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
@@ -12,7 +13,6 @@ import android.os.ParcelFileDescriptor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 
 /** Public, read-only access to the selected external-theme wallpaper, never arbitrary files. */
@@ -28,14 +28,17 @@ public final class WallpaperProvider extends ContentProvider {
         return new SharedWallpaper(new File(context.getFilesDir(), "shared-wallpaper"));
     }
 
-    static void publish(Context context, File cropped) throws IOException {
-        if (cropped.length() == 0 || cropped.length() > SharedWallpaper.MAX_BYTES) throw new IOException("裁剪图片为空或超过 32 MiB");
-        byte[] jpeg = Files.readAllBytes(cropped.toPath());
+    static void publish(Context context, byte[] jpeg) throws IOException {
+        if (jpeg.length == 0 || jpeg.length > SharedWallpaper.MAX_BYTES) throw new IOException("壁纸为空或超过 32 MiB");
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, bounds);
-        if (!"image/jpeg".equals(bounds.outMimeType) || bounds.outWidth <= 0 || bounds.outHeight <= 0
-                || bounds.outWidth > 4096 || bounds.outHeight > 4096) throw new IOException("裁剪图片不是有效的 JPEG 壁纸");
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("壁纸图片无效");
+        if (!"image/jpeg".equals(bounds.outMimeType) || bounds.outWidth > 4096 || bounds.outHeight > 4096) {
+            Bitmap image = Images.decode(jpeg, 4096);
+            try { jpeg = Images.jpeg(image); }
+            finally { image.recycle(); }
+        }
         synchronized (LOCK) { store(context).publish(jpeg); }
         context.getContentResolver().notifyChange(CURRENT, null, android.content.ContentResolver.NOTIFY_UPDATE);
     }

@@ -7,11 +7,20 @@ import android.net.Uri;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 final class Images {
     static Bitmap decode(Context context, Uri uri, int maxSide) throws IOException {
-        return ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.getContentResolver(), uri),
-                (decoder, info, source) -> {
+        return decode(ImageDecoder.createSource(context.getContentResolver(), uri), maxSide);
+    }
+
+    static Bitmap decode(byte[] bytes, int maxSide) throws IOException {
+        return decode(ImageDecoder.createSource(ByteBuffer.wrap(bytes)), maxSide);
+    }
+
+    private static Bitmap decode(ImageDecoder.Source source, int maxSide) throws IOException {
+        return ImageDecoder.decodeBitmap(source,
+                (decoder, info, imageSource) -> {
                     decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
                     int width = info.getSize().getWidth();
                     int height = info.getSize().getHeight();
