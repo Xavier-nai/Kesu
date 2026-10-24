@@ -6,9 +6,13 @@
 
 ## 安装测试版
 
-[下载 Kesu 0.1.3 测试 APK](downloads/Kesu-0.1.3-debug.apk?raw=true)
+[下载 Kesu 0.1.4 测试 APK](downloads/Kesu-0.1.4-debug.apk?raw=true)
 
 此安装包在本地通过编译、26 项单元测试、Android Lint 和 APK 签名验证。具体界面交互仍需手机复测。
+
+### 0.1.4 跳转修复
+
+- 「前往主题商店」优先使用与参考 APK 相同的主题页面入口；该页面不可用时尝试主题应用的普通启动入口。
 
 ### 0.1.3 交互调整
 
