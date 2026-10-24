@@ -12,6 +12,12 @@
         android:icon="@drawable/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- Themes read only the wallpaper explicitly selected for this interface. -->
+        <provider
+            android:name=".WallpaperProvider"
+            android:authorities="com.xavier.kesu.wallpaper"
+            android:exported="true"
+            android:grantUriPermissions="false" />
         <activity android:name=".CropActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>

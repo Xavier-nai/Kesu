@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  接入示例，不是完整主题。将下列内容合并到原锁屏 manifest.xml，勿覆盖原文件。
+  保留原 Lockscreen 属性、时钟、动画、按钮及 Unlocker。
+  已有 VariableBinders / ExternalCommands 时，将子节点合并到已有节点。
+-->
+<Lockscreen version="2" frameRate="30" screenWidth="1080">
+    <VariableBinders>
+        <ContentProviderBinder name="kesuWallpaper"
+            uri="content://com.xavier.kesu.wallpaper/current"
+            columns="image_uri,version">
+            <Variable name="kesu_image" type="string" column="image_uri" row="0" />
+            <Variable name="kesu_version" type="string" column="version" row="0" />
+        </ContentProviderBinder>
+    </VariableBinders>
+
+    <ExternalCommands>
+        <Trigger action="init,resume">
+            <BinderCommand name="kesuWallpaper" command="refresh" />
+        </Trigger>
+    </ExternalCommands>
+
+    <!-- 背景层：原系统壁纸作为未选图或外部图片读取失败时的背景。 -->
+    <Wallpaper />
+    <Image name="kesu_background" x="0" y="0"
+        w="#screen_width" h="#screen_height"
+        srcType="Uri" srcExp="@kesu_image" />
+
+    <!-- 原主题的时钟、动画、按钮与 Unlocker 放在背景层之后，继续保留。 -->
+</Lockscreen>

@@ -151,6 +151,11 @@ public final class MainActivity extends Activity {
     }
 
     private void lockPage() {
+        LinearLayout live = card();
+        live.addView(text("实时锁屏壁纸", 21, INK, true));
+        live.addView(text("主题接入 Kesu 外部数据接口后，选图并确认裁剪，下次进入锁屏即可读取新图，无需重新应用主题。", 14, MUTED, false));
+        addButton(live, "选择实时锁屏壁纸", () -> choosePhoto(null), true);
+        body.addView(live);
         LinearLayout explanation = card();
         explanation.addView(text("主题锁屏壁纸", 21, INK, true));
         explanation.addView(text("只替换主题背景图片。更换或恢复后，请到主题商店重新应用对应主题。", 14, MUTED, false));
@@ -237,7 +242,7 @@ public final class MainActivity extends Activity {
 
     private void choosePhoto(ThemeStore.Entry target) {
         pickerActive = true;
-        pendingPage = target == null ? 0 : 1;
+        pendingPage = target == null ? page : 1;
         pendingEntry = target;
         Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -291,6 +296,13 @@ public final class MainActivity extends Activity {
                     return Images.decode(getApplicationContext(), Uri.fromFile(desktopFile()), 800);
                 }, preview -> { desktopPreview = preview; page = 0; render(); });
             } else if (pendingEntry != null) mutate(pendingEntry, cropped);
+            else {
+                runTask("更新实时锁屏壁纸", () -> {
+                    WallpaperProvider.publish(getApplicationContext(), cropped);
+                    cropped.delete();
+                    return true;
+                }, ignored -> message("壁纸已更新，接入 Kesu 的主题在进入锁屏时读取新图"));
+            }
         }
     }
 
