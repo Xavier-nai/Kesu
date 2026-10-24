@@ -50,7 +50,6 @@ public final class MainActivity extends Activity {
     private boolean pickerActive;
     private int pendingPage;
     private ThemeStore.Entry pendingEntry;
-    private String selectedId = "";
     private final List<ThemeStore.Entry> entries = new ArrayList<>();
     private Bitmap desktopPreview;
 
@@ -63,7 +62,6 @@ public final class MainActivity extends Activity {
         });
         if (state != null) {
             page = state.getInt("page");
-            selectedId = state.getString("selected", "");
             pickerActive = state.getBoolean("picker");
             pendingPage = state.getInt("pending_page");
             if (state.containsKey("pending_id")) {
@@ -158,28 +156,8 @@ public final class MainActivity extends Activity {
         explanation.addView(text("只替换主题背景图片。更换或恢复后，请到主题商店重新应用对应主题。", 14, MUTED, false));
         addButton(explanation, treeValue().isEmpty() ? "授权主题目录" : "重新授权目录", this::authorize, false);
         if (!treeValue().isEmpty()) addButton(explanation, "刷新壁纸列表", this::refresh, false);
+        addButton(explanation, "前往主题商店", this::openThemeManager, false);
         body.addView(explanation);
-
-        ThemeStore.Entry selected = selected();
-        if (selected != null) {
-            LinearLayout actions = card();
-            actions.addView(text(selected.title, 18, INK, true));
-            if (!selected.designer.isEmpty()) actions.addView(text("作者：" + selected.designer, 13, MUTED, false));
-            actions.addView(text("首次替换前备份原图，每次写入后校验。", 13, MUTED, false));
-            addButton(actions, "选择图片并替换", () -> choosePhoto(selected), true);
-            addButton(actions, "恢复原图", () -> new AlertDialog.Builder(this)
-                    .setTitle("恢复原图")
-                    .setMessage("将「" + selected.title + "」恢复为首次替换前的图片，原图备份会保留。")
-                    .setNegativeButton("取消", null).setPositiveButton("恢复", (d, w) -> mutate(selected, null)).show(), false);
-            addButton(actions, "提取图片到相册", () -> {
-                String tree = treeValue();
-                runTask("提取图片", () -> {
-                    export(new ThemeStore(getApplicationContext(), Uri.parse(tree)).extract(selected)); return true;
-                }, ignored -> message("已保存到相册 Pictures/Kesu"));
-            }, false);
-            addButton(actions, "前往主题商店", this::openThemeManager, false);
-            body.addView(actions);
-        }
         TextView count = text(entries.isEmpty() ? "授权后，点击刷新读取主题壁纸。" : "主题壁纸 · " + entries.size(), 14, MUTED, false);
         count.setPadding(0, dp(8), 0, dp(12));
         body.addView(count);
@@ -187,7 +165,7 @@ public final class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(12), dp(12), dp(12), dp(12));
-            row.setBackground(shape(entry.id.equals(selectedId) ? 0xFFE4EDE3 : Color.WHITE, 16));
+            row.setBackground(shape(Color.WHITE, 16));
             row.setEnabled(!busy);
             ImageView image = new ImageView(this);
             image.setImageBitmap(entry.thumbnail);
@@ -199,15 +177,44 @@ public final class MainActivity extends Activity {
             label.addView(text(entry.title, 16, INK, true));
             if (!entry.designer.isEmpty()) label.addView(text("作者：" + entry.designer, 12, MUTED, false));
             label.addView(text(entry.thumbnail == null ? "图片无法预览，可尝试恢复原图"
-                    : entry.id.equals(selectedId) ? "已选择" : "点击选择此主题", 12, MUTED, false));
+                    : "点击管理壁纸", 12, MUTED, false));
             row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
             row.setContentDescription(entry.title + (entry.designer.isEmpty() ? "" : "，作者：" + entry.designer)
-                    + (entry.id.equals(selectedId) ? "，已选择" : "，点击选择"));
-            row.setOnClickListener(v -> { if (!busy) { selectedId = entry.id; render(); } });
+                    + "，点击管理壁纸");
+            row.setOnClickListener(v -> { if (!busy) showWallpaperDialog(entry); });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
             lp.setMargins(0, 0, 0, dp(10));
             body.addView(row, lp);
         }
+    }
+
+    private void showWallpaperDialog(ThemeStore.Entry entry) {
+        LinearLayout actions = column();
+        actions.setPadding(dp(20), dp(8), dp(20), dp(12));
+        if (!entry.designer.isEmpty()) actions.addView(text("作者：" + entry.designer, 14, MUTED, false));
+        actions.addView(text("首次替换前备份原图，每次写入后校验。", 13, MUTED, false));
+        ScrollView content = new ScrollView(this);
+        content.addView(actions);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(entry.title)
+                .setView(content).setNegativeButton("关闭", null).create();
+        addButton(actions, "选择图片并替换", () -> {
+            dialog.dismiss();
+            choosePhoto(entry);
+        }, true);
+        addButton(actions, "恢复原图", () -> {
+            dialog.dismiss();
+            new AlertDialog.Builder(this).setTitle("恢复原图")
+                    .setMessage("将「" + entry.title + "」恢复为首次替换前的图片，原图备份会保留。")
+                    .setNegativeButton("取消", null).setPositiveButton("恢复", (d, w) -> mutate(entry, null)).show();
+        }, false);
+        addButton(actions, "提取图片到相册", () -> {
+            dialog.dismiss();
+            String tree = treeValue();
+            runTask("提取图片", () -> {
+                export(new ThemeStore(getApplicationContext(), Uri.parse(tree)).extract(entry)); return true;
+            }, ignored -> message("已保存到相册 Pictures/Kesu"));
+        }, false);
+        dialog.show();
     }
 
     private void authorize() {
@@ -259,7 +266,6 @@ public final class MainActivity extends Activity {
                         Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 runTask("检查主题目录", () -> new ThemeStore(getApplicationContext(), tree).list(), list -> {
                     prefs.edit().putString("tree", tree.toString()).apply();
-                    selectedId = "";
                     setEntries(list);
                 });
             } catch (Exception e) { error(e.getMessage()); }
@@ -306,7 +312,7 @@ public final class MainActivity extends Activity {
             refresh();
             new AlertDialog.Builder(this).setTitle(replacement == null ? "原图已恢复" : "壁纸已替换")
                     .setMessage("请在主题商店中重新应用「" + entry.title + "」，然后锁屏检查效果。")
-                    .setNegativeButton("稍后", null).setPositiveButton("前往主题商店", (d, w) -> openThemeManager()).show();
+                    .setPositiveButton("知道了", null).show();
         });
     }
 
@@ -409,10 +415,6 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private ThemeStore.Entry selected() {
-        for (ThemeStore.Entry entry : entries) if (entry.id.equals(selectedId)) return entry;
-        return null;
-    }
     private File desktopFile() { return new File(getFilesDir(), "desktop.jpg"); }
     private String treeValue() { return prefs.getString("tree", ""); }
     private void message(String text) { android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_LONG).show(); }
@@ -421,7 +423,6 @@ public final class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putInt("page", page);
-        state.putString("selected", selectedId);
         state.putBoolean("picker", pickerActive);
         state.putInt("pending_page", pendingPage);
         if (pendingEntry != null) {
