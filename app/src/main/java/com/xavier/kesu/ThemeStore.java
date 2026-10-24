@@ -212,8 +212,8 @@ final class ThemeStore {
                 output.write(buffer, 0, n);
             }
             return output.toByteArray();
-        } catch (SecurityException e) {
-            throw new IOException("读取权限已失效，请重新授权", e);
+        } catch (RuntimeException e) {
+            throw new IOException("读取主题图片失败，请检查目录授权", e);
         }
     }
 
@@ -267,7 +267,7 @@ final class ThemeStore {
                     output.write(bytes);
                     output.flush();
                 }
-            } catch (SecurityException | IllegalArgumentException e) {
+            } catch (RuntimeException e) {
                 throw new IOException("写入被拒绝，请检查目录读写权限", e);
             }
         }
